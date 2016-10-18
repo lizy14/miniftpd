@@ -23,6 +23,36 @@
 
 #define equal(x, y) (strcmp((x), (y))==0)
 
+int socket_bind_listen(int* listenfd, int port){
+
+    struct sockaddr_in addr;
+    if ((*listenfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1) {
+        printf("Error socket(): %s(%d)\n", strerror(errno), errno);
+        return 1;
+    }
+
+    int yes = 1;
+    if(setsockopt(*listenfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1){
+        printf("Error setsockopt(): %s(%d)\n", strerror(errno), errno);
+        return 1;
+    }
+
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+
+    if (bind(*listenfd, (struct sockaddr*)&addr, sizeof(addr)) == -1) {
+        printf("Error bind(): %s(%d)\n", strerror(errno), errno);
+        return 1;
+    }
+
+    if (listen(*listenfd, 10) == -1) {
+        printf("Error listen(): %s(%d)\n", strerror(errno), errno);
+        return 1;
+    }
+}
+
 int rtrim(char* str){
     int i = strlen(str) - 1;
     while(i>=0){

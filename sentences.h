@@ -9,3 +9,5 @@ char* syst_hard_coded = "215 UNIX Type: L8\n";
 char* type_hard_coded = "200 Type set to I.\n";
 char* not_supported = "502 Don't test me too hard. \n";
 char* good_bye = "421 Good bye.\n";
+char* need_transfer_connection = "425 You have to call PORT or PASV first. \n";
+char* begin_transfer = "150 Opening BINARY mode data connection. \n";

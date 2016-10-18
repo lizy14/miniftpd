@@ -26,7 +26,8 @@ int serve_client(int sockfd){
 	char username[8192];
 	int flag_pasv_mode = 0;
 	int flag_port_mode = 0;
-	int port_id = 0;
+	int pasv_mode_fd;
+	char port_mode_parameter[8192];
 
 
 
@@ -52,7 +53,8 @@ int serve_client(int sockfd){
 		parse_sentence(sentence, verb, parameter);
 		printf("verb '%s', parameter '%s'\n", verb, parameter);
 
-		if(equal(sentence, "USER")){
+
+		if(equal(verb, "USER")){
 			strcpy(username, parameter);
 			flag_username_provided = 1;
 			if(startsWith(username, anonymous_username)){
@@ -60,7 +62,8 @@ int serve_client(int sockfd){
 			}else{
 				send_string(sockfd, username_accepted);
 			}
-		}else if(equal(sentence, "PASS")){
+
+		}else if(equal(verb, "PASS")){
 			if(flag_username_provided){
 				if(authenticate(username, parameter)){
 					flag_user_authenticated = 1;
@@ -71,15 +74,68 @@ int serve_client(int sockfd){
 			}else{
 				send_string(sockfd, need_username_before_password);
 			}
+
 		}else if(equal(verb, "SYST")){
 			send_string(sockfd, syst_hard_coded);
+
 		}else if(equal(verb, "TYPE")){
 			if(equal(parameter, "I") || 1 /*TODO*/){
 				send_string(sockfd, type_hard_coded);
 			}
+
 		}else if(equal(verb, "QUIT")){
 			send_string(sockfd, good_bye);
 			return;
+
+		}else if(equal(verb, "PASV")){
+			flag_pasv_mode = 1;
+			int port = 23333;
+			socket_bind_listen(&pasv_mode_fd, port);
+			char response[200];
+			sprintf(
+				response,
+				"227 Entering Passive Mode(%d,%d,%d,%d,%d,%d) \n",
+				127,
+				0,
+				0,
+				1,
+				port / 256,
+				port % 256
+			);
+			send_string(sockfd, response);
+
+		}else if(equal(verb, "PORT")){
+			flag_port_mode = 1;
+
+		}else if(equal(verb, "RETR")){
+			if(flag_port_mode){
+				//TODO
+
+			}else if(flag_pasv_mode){
+				send_string(sockfd, begin_transfer);
+				int pasv_mode_transfer_fd = accept(pasv_mode_fd, NULL, NULL);
+				send_file(pasv_mode_transfer_fd, parameter);
+				close(pasv_mode_transfer_fd);
+				close(pasv_mode_fd);
+
+			}else{
+				send_string(sockfd, need_transfer_connection);
+			}
+
+		}else if(equal(verb, "STOR")){
+			if(flag_port_mode){
+
+			}else if(flag_pasv_mode){
+				send_string(sockfd, begin_transfer);
+				int pasv_mode_transfer_fd = accept(pasv_mode_fd, NULL, NULL);
+				recv_file(pasv_mode_transfer_fd, parameter);
+				close(pasv_mode_transfer_fd);
+				close(pasv_mode_fd);
+
+			}else{
+				send_string(sockfd, need_transfer_connection);
+			}
+
 		}else{
 			send_string(sockfd, not_supported);
 		}
@@ -94,37 +150,13 @@ int main(int argc, char **argv) {
 	//establish listening and distribute incomming connections
 
     int listenfd, connfd;
-    struct sockaddr_in addr;
 
     int p;
     int len;
 
-    if ((listenfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1) {
-        printf("Error socket(): %s(%d)\n", strerror(errno), errno);
-        return 1;
-    }
-
-	int yes = 1;
-	if(setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1){
-		printf("Error setsockopt(): %s(%d)\n", strerror(errno), errno);
-        return 1;
+	if(socket_bind_listen(&listenfd, 21) != 0){
+		return;
 	}
-
-
-    memset(&addr, 0, sizeof(addr));
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(21);
-    addr.sin_addr.s_addr = htonl(INADDR_ANY);
-
-    if (bind(listenfd, (struct sockaddr*)&addr, sizeof(addr)) == -1) {
-        printf("Error bind(): %s(%d)\n", strerror(errno), errno);
-        return 1;
-    }
-
-    if (listen(listenfd, 10) == -1) {
-        printf("Error listen(): %s(%d)\n", strerror(errno), errno);
-        return 1;
-    }
 
     while (1) {
         if ((connfd = accept(listenfd, NULL, NULL)) == -1) {
