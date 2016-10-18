@@ -29,6 +29,10 @@ int serve_client(int sockfd){
 	int pasv_mode_fd;
 	char port_mode_parameter[8192];
 
+	if(flag_user_authenticated){
+		; //supress compile warning
+	}
+
 
 
 	while(1){
@@ -85,7 +89,7 @@ int serve_client(int sockfd){
 
 		}else if(equal(verb, "QUIT")){
 			send_string(sockfd, good_bye);
-			return;
+			return 0;
 
 		}else if(equal(verb, "PASV")){
 			flag_pasv_mode = 1;
@@ -106,35 +110,54 @@ int serve_client(int sockfd){
 
 		}else if(equal(verb, "PORT")){
 			flag_port_mode = 1;
+			strcpy(port_mode_parameter, parameter);
+			send_string(sockfd, port_accepted);
 
 		}else if(equal(verb, "RETR")){
 			if(flag_port_mode){
-				//TODO
+				send_string(sockfd, begin_transfer);
+				int port_mode_transfer_fd;
+				socket_connect(&port_mode_transfer_fd, port_mode_parameter);
+				send_file(port_mode_transfer_fd, parameter);
+				send_string(sockfd, transfer_finished);
+				close(port_mode_transfer_fd);
 
 			}else if(flag_pasv_mode){
 				send_string(sockfd, begin_transfer);
 				int pasv_mode_transfer_fd = accept(pasv_mode_fd, NULL, NULL);
 				send_file(pasv_mode_transfer_fd, parameter);
+				send_string(sockfd, transfer_finished);
 				close(pasv_mode_transfer_fd);
 				close(pasv_mode_fd);
 
 			}else{
 				send_string(sockfd, need_transfer_connection);
 			}
+			flag_port_mode = 0;
+			flag_pasv_mode = 0;
 
 		}else if(equal(verb, "STOR")){
 			if(flag_port_mode){
+				send_string(sockfd, begin_transfer);
+				int port_mode_transfer_fd;
+				socket_connect(&port_mode_transfer_fd, port_mode_parameter);
+				recv_file(port_mode_transfer_fd, parameter);
+				send_string(sockfd, transfer_finished);
+				close(port_mode_transfer_fd);
 
 			}else if(flag_pasv_mode){
 				send_string(sockfd, begin_transfer);
 				int pasv_mode_transfer_fd = accept(pasv_mode_fd, NULL, NULL);
 				recv_file(pasv_mode_transfer_fd, parameter);
+				send_string(sockfd, transfer_finished);
 				close(pasv_mode_transfer_fd);
 				close(pasv_mode_fd);
 
 			}else{
 				send_string(sockfd, need_transfer_connection);
 			}
+			flag_port_mode = 0;
+			flag_pasv_mode = 0;
 
 		}else{
 			send_string(sockfd, not_supported);
@@ -147,15 +170,48 @@ int serve_client(int sockfd){
 
 int main(int argc, char **argv) {
 
-	//establish listening and distribute incomming connections
+	fclose(stdout); //disable debug output
 
+
+	int listening_port = 21;
+	char working_directory[8192] = "/tmp";
+
+
+
+	static struct option long_options[] = {
+		{"root",     required_argument ,       0, 'r'},
+		{"port",     required_argument ,       0, 'p'},
+		{0, 0, 0, 0}
+	};
+
+	int option_index = 0;
+
+	int c;
+
+	while (1){
+		c = getopt_long_only(argc, argv, "rp:", long_options, &option_index);
+		switch(c){
+			case 'r':
+				strcpy(working_directory, optarg);
+				break;
+			case 'p':
+				listening_port = atoi(optarg);
+				break;
+			default:
+				goto outer_break;
+		}
+	}
+	outer_break:
+
+	printf("work in %s, listen on %d\n", working_directory, listening_port);
+	chdir(working_directory);
+
+	//establish listening and distribute incomming connections
     int listenfd, connfd;
 
-    int p;
-    int len;
 
-	if(socket_bind_listen(&listenfd, 21) != 0){
-		return;
+	if(socket_bind_listen(&listenfd, listening_port) != 0){
+		return 1;
 	}
 
     while (1) {

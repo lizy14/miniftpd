@@ -7,8 +7,12 @@
 
    环　境: WSL, Windows 10.0.14393, gcc (Ubuntu 4.8.4-2ubuntu1~14.04.3) 4.8.4
  */
+
+
+
 #include "sentences.h"
 
+#include <getopt.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 
@@ -19,9 +23,72 @@
 #include <memory.h>
 #include <stdio.h>
 #include <ctype.h>
+#include <stdlib.h>
+#include <arpa/inet.h>
 
 
 #define equal(x, y) (strcmp((x), (y))==0)
+
+int str_replace(char* str, char find, char replace){
+    int counter = 0;
+    while(*str){
+        if (*str == find){
+            *str = replace;
+            counter ++;
+        }
+        str++;
+    }
+    return counter;
+}
+
+int socket_connect(int* connfd, char* ip_and_port){
+
+    //parse "(127,0,0,1,233,233)"
+    char target_ip[20];
+    int target_port = 0;
+
+    char* comma;
+    comma = strrchr(ip_and_port, ',');
+    int ip_low = atoi(comma + 1);
+    *comma = 0;
+    comma = strrchr(ip_and_port, ',');
+    int ip_high = atoi(comma + 1);
+    *comma = 0;
+
+    target_port = ip_high * 256 + ip_low;
+
+    str_replace(ip_and_port, ',', '.');
+    strcpy(target_ip, ip_and_port);
+
+    printf("Connecting to %s:%d\n", target_ip, target_port);
+
+
+    struct sockaddr_in server_addr;
+
+    if ((*connfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1) {
+        printf("Error socket(): %s(%d)\n", strerror(errno), errno);
+        return 1;
+    }
+
+
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(target_port);
+    if (inet_pton(AF_INET, target_ip, &server_addr.sin_addr) <= 0) {
+        printf("Error inet_pton(): %s(%d)\n", strerror(errno), errno);
+        return 1;
+    }
+
+    if (connect(*connfd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+        printf("Error connect(): %s(%d)\n", strerror(errno), errno);
+        return 1;
+    }
+
+    return 0;
+
+}
+
+
 
 int socket_bind_listen(int* listenfd, int port){
 
@@ -51,6 +118,7 @@ int socket_bind_listen(int* listenfd, int port){
         printf("Error listen(): %s(%d)\n", strerror(errno), errno);
         return 1;
     }
+    return 0;
 }
 
 int rtrim(char* str){
@@ -61,6 +129,7 @@ int rtrim(char* str){
         }
         i--;
     }
+    return 0;
 }
 
 int parse_sentence(char* sentence, char* verb, char* parameter){
@@ -139,7 +208,6 @@ int recv_line(int s, char *buf, int len) {
     }
     return n==-1 ? -1 : received;
 }
-
 
 void send_file(int s, char* filename) {
     FILE* f = fopen(filename, "rb");
