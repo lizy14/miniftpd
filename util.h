@@ -23,6 +23,16 @@
 
 #define equal(x, y) (strcmp((x), (y))==0)
 
+int rtrim(char* str){
+    int i = strlen(str) - 1;
+    while(i>=0){
+        if(strchr(" \r\n\t", str[i]) != NULL){
+            str[i] = '\0';
+        }
+        i--;
+    }
+}
+
 int parse_sentence(char* sentence, char* verb, char* parameter){
     char* space = strchr(sentence, ' ');
     if(space != NULL)
@@ -32,6 +42,8 @@ int parse_sentence(char* sentence, char* verb, char* parameter){
         strcpy(parameter, space+1);
     else
         *parameter = '\0';
+    rtrim(verb);
+    rtrim(parameter);
     return 0;
 }
 

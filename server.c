@@ -9,14 +9,26 @@
  */
 
 #include "util.h"
+
+int authenticate(char* username, char* password){
+	if(startsWith(username, anonymous_username))
+		return 1;
+	else
+		return 0;
+}
+
 int serve_client(int sockfd){
 
 	send_string(sockfd, greeting);
 
-	int flag_logged_in = 0;
+	int flag_username_provided = 0;
+	int flag_user_authenticated = 0;
+	char username[8192];
 	int flag_pasv_mode = 0;
 	int flag_port_mode = 0;
 	int port_id = 0;
+
+
 
 	while(1){
 		//main loop per client
@@ -27,22 +39,51 @@ int serve_client(int sockfd){
 			close(sockfd);
 			return 1;
 		}
+		if(p == 0){
+			close(sockfd);
+			return 0;
+		}
 		sentence[p] = 0;
-		printf("heard %d bytes: `%s`\n", p, sentence);
-
+		printf("heard %d bytes: \n", p);
+		puts(sentence);
+		puts("");
 		char verb[8192];
 		char parameter[8192];
 		parse_sentence(sentence, verb, parameter);
-		printf("verb `%s`, parameter `%s`", verb, parameter);
+		printf("verb '%s', parameter '%s'\n", verb, parameter);
 
-		char response[9000];
-		sprintf(response, "verb `%s`, parameter `%s`", verb, parameter);
-
-		int n = send_string(sockfd, response);
-		if (n < 0) {
-			printf("Error write(): %s(%d)\n", strerror(errno), errno);
-			return 1;
+		if(equal(sentence, "USER")){
+			strcpy(username, parameter);
+			flag_username_provided = 1;
+			if(startsWith(username, anonymous_username)){
+				send_string(sockfd, anonymous_accepted);
+			}else{
+				send_string(sockfd, username_accepted);
+			}
+		}else if(equal(sentence, "PASS")){
+			if(flag_username_provided){
+				if(authenticate(username, parameter)){
+					flag_user_authenticated = 1;
+					send_string(sockfd, login_successful);
+				}else{
+					send_string(sockfd, login_failed);
+				}
+			}else{
+				send_string(sockfd, need_username_before_password);
+			}
+		}else if(equal(verb, "SYST")){
+			send_string(sockfd, syst_hard_coded);
+		}else if(equal(verb, "TYPE")){
+			if(equal(parameter, "I") || 1 /*TODO*/){
+				send_string(sockfd, type_hard_coded);
+			}
+		}else if(equal(verb, "QUIT")){
+			send_string(sockfd, good_bye);
+			return;
+		}else{
+			send_string(sockfd, not_supported);
 		}
+
 	}
 
 	return 0;
@@ -72,7 +113,7 @@ int main(int argc, char **argv) {
 
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
-    addr.sin_port = 6789;
+    addr.sin_port = htons(21);
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
     if (bind(listenfd, (struct sockaddr*)&addr, sizeof(addr)) == -1) {
