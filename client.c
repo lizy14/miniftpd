@@ -41,7 +41,7 @@ int main(int argc, char **argv) {
     sentence[len] = '\n';
     sentence[len + 1] = '\0';
 
-    int n = send_all(sockfd, sentence, len + 1);
+    int n = send_string(sockfd, sentence);
     if (n < 0) {
         printf("Error write(): %s(%d)\n", strerror(errno), errno);
         return 1;
@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
 
 	sentence[p - 1] = '\0';
 
-	printf("FROM SERVER: %s", sentence);
+	printf("FROM SERVER: `%s`\n", sentence);
 
 	close(sockfd);
 

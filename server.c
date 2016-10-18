@@ -9,11 +9,52 @@
  */
 
 #include "util.h"
+int serve_client(int sockfd){
+
+	send_string(sockfd, greeting);
+
+	int flag_logged_in = 0;
+	int flag_pasv_mode = 0;
+	int flag_port_mode = 0;
+	int port_id = 0;
+
+	while(1){
+		//main loop per client
+		char sentence[8192];
+		int p = recv_line(sockfd, sentence, 8191);
+		if (p < 0) {
+			printf("Error read(): %s(%d)\n", strerror(errno), errno);
+			close(sockfd);
+			return 1;
+		}
+		sentence[p] = 0;
+		printf("heard %d bytes: `%s`\n", p, sentence);
+
+		char verb[8192];
+		char parameter[8192];
+		parse_sentence(sentence, verb, parameter);
+		printf("verb `%s`, parameter `%s`", verb, parameter);
+
+		char response[9000];
+		sprintf(response, "verb `%s`, parameter `%s`", verb, parameter);
+
+		int n = send_string(sockfd, response);
+		if (n < 0) {
+			printf("Error write(): %s(%d)\n", strerror(errno), errno);
+			return 1;
+		}
+	}
+
+	return 0;
+}
 
 int main(int argc, char **argv) {
+
+	//establish listening and distribute incomming connections
+
     int listenfd, connfd;
     struct sockaddr_in addr;
-    char sentence[8192];
+
     int p;
     int len;
 
@@ -21,6 +62,13 @@ int main(int argc, char **argv) {
         printf("Error socket(): %s(%d)\n", strerror(errno), errno);
         return 1;
     }
+
+	int yes = 1;
+	if(setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1){
+		printf("Error setsockopt(): %s(%d)\n", strerror(errno), errno);
+        return 1;
+	}
+
 
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
@@ -41,30 +89,21 @@ int main(int argc, char **argv) {
         if ((connfd = accept(listenfd, NULL, NULL)) == -1) {
             printf("Error accept(): %s(%d)\n", strerror(errno), errno);
             continue;
-        }
-
-		int p = recv_line(connfd, sentence, 8191);
-        if (p < 0) {
-            printf("Error read(): %s(%d)\n", strerror(errno), errno);
-            close(connfd);
-            continue;
-        }
-		sentence[p] = 0;
-		len = strlen(sentence);
-		printf("sentence %d", len);
-		int i;
-        for (i = 0; i < len; i++) {
-            sentence[i] = toupper(sentence[i]);
-        }
-
-        int n = send_all(connfd, sentence, len);
-        if (n < 0) {
-            printf("Error write(): %s(%d)\n", strerror(errno), errno);
-            return 1;
-        }
-
+        }else{
+			//connection accepted
+			int pid = fork();
+			if(pid < 0){
+				printf("Error fork()");
+			}else if(pid == 0){
+				close(listenfd);
+				serve_client(connfd);
+				close(connfd);
+				return 0;
+			}
+			close(connfd);
+		}
         close(connfd);
     }
-
     close(listenfd);
+	return 0;
 }

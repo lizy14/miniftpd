@@ -7,6 +7,7 @@
 
    环　境: WSL, Windows 10.0.14393, gcc (Ubuntu 4.8.4-2ubuntu1~14.04.3) 4.8.4
  */
+#include "sentences.h"
 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -19,17 +20,45 @@
 #include <stdio.h>
 #include <ctype.h>
 
-int send_all(int s, char *buf, int len) {
+
+#define equal(x, y) (strcmp((x), (y))==0)
+
+int parse_sentence(char* sentence, char* verb, char* parameter){
+    char* space = strchr(sentence, ' ');
+    if(space != NULL)
+        *space = '\0';
+    strcpy(verb, sentence);
+    if(space != NULL)
+        strcpy(parameter, space+1);
+    else
+        *parameter = '\0';
+    return 0;
+}
+
+int startsWith(char* sentence, char* word){
+    while(*word){
+        if(*sentence == '\0')
+            return 0;
+        if(*word != *sentence)
+            return 0;
+        word++;
+        sentence++;
+    }
+    return 1;
+}
+
+int send_string(int s, char *str) {
+    int len = strlen(str);
     int total = 0; // how many bytes we've sent
-    int bytesleft = len; // how many we have left to send
+    int charsleft = len; // how many we have left to send
     int n;
     while(total < len) {
-        n = send(s, buf+total, bytesleft, 0);
+        n = send(s, str+total, charsleft, 0);
         if (n == -1){
             break;
         }
         total += n;
-        bytesleft -= n;
+        charsleft -= n;
     }
     if(n == -1){
         printf("Error send(): %s(%d)\n", strerror(errno), errno);
@@ -55,6 +84,9 @@ int recv_line(int s, char *buf, int len) {
         available -= n;
         if(*(buf+received-1) == '\n') {
             // TODO: containing, rather than terminating with
+            // TODO: remove terminating newline?
+            received --;
+            buf[received] = '\0';
             break;
         }
     }
