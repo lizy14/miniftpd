@@ -8,8 +8,12 @@
    环　境: WSL, Windows 10.0.14393, gcc (Ubuntu 4.8.4-2ubuntu1~14.04.3) 4.8.4
  */
 
-//#define printf_verbose(...) //suppress trace output
+#define printf_verbose(...) //suppress trace output
+
+
+#include "sentences.h"
 #include "util.h"
+
 
 int authenticate(char* username, char* password){
 	if(startsWith(username, anonymous_username))
@@ -140,6 +144,7 @@ int serve_client(int sockfd){
 		}else if(equal(verb, "STOR")){
 			if(flag_port_mode){
 				send_string(sockfd, begin_transfer);
+				sleep(1);
 				int port_mode_transfer_fd;
 				socket_connect(&port_mode_transfer_fd, port_mode_parameter);
 				recv_file(port_mode_transfer_fd, parameter);
@@ -148,6 +153,7 @@ int serve_client(int sockfd){
 
 			}else if(flag_pasv_mode){
 				send_string(sockfd, begin_transfer);
+				sleep(1);
 				int pasv_mode_transfer_fd = accept(pasv_mode_fd, NULL, NULL);
 				recv_file(pasv_mode_transfer_fd, parameter);
 				send_string(sockfd, transfer_finished);

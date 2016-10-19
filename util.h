@@ -8,9 +8,7 @@
    环　境: WSL, Windows 10.0.14393, gcc (Ubuntu 4.8.4-2ubuntu1~14.04.3) 4.8.4
  */
 
-
-
-#include "sentences.h"
+#pragma once
 
 #include <getopt.h>
 #include <sys/socket.h>

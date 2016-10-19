@@ -8,7 +8,7 @@
    环　境: WSL, Windows 10.0.14393, gcc (Ubuntu 4.8.4-2ubuntu1~14.04.3) 4.8.4
  */
 
-//#define printf_verbose(...) //suppress trace output
+#define printf_verbose(...) //suppress trace output
 #include "util.h"
 
 char* usage = "Usage: \n    upload FILENAME\n    download FILENAME\n    exit\n    help\n";
@@ -17,6 +17,7 @@ char* connect_success = "Successfully logged in FTP server at %s as anonymous.\n
 char* connect_fail = "Failed to connect to %s\n";
 char* user_command = "USER anonymous\n";
 char* pass_command = "PASS zhaoyang_s_simple_ftp_client\n";
+char* passive_mode = "Passive mode, connecting to port %d\n";
 
 int get_port_from_pasv_response(char* sentence){
     /*
@@ -35,7 +36,7 @@ int get_port_from_pasv_response(char* sentence){
         return -1;
     int high = atoi(comma + 1);
     int port = high * 256 + low;
-    printf("Passive mode, connecting to port %d\n", port);
+    printf(passive_mode, port);
     return port;
 }
 
@@ -96,10 +97,11 @@ int main(int argc, char **argv) {
             sprintf(command, "RETR %s\n", parameter);
             socket_connect(&transfd, ip_and_port);
             send_checkresponse(sockfd, command, "150", sentence, 8191);
-            sleep(1);
             recv_file(transfd, parameter);
             close(transfd);
-            send_checkresponse(sockfd, "", "226", sentence, 8191);
+            if(!send_checkresponse(sockfd, "", "226", sentence, 8191)){
+                printf("Successfully downloaded `%s`.", parameter);
+            }
             continue;
 
         }else if(equal(verb, "upload")){
@@ -110,10 +112,11 @@ int main(int argc, char **argv) {
             sprintf(command, "STOR %s\n", parameter);
             socket_connect(&transfd, ip_and_port);
             send_checkresponse(sockfd, command, "150", sentence, 8191);
-            sleep(1);
             send_file(transfd, parameter);
             close(transfd);
-            send_checkresponse(sockfd, "", "226", sentence, 8191);
+            if(!send_checkresponse(sockfd, "", "226", sentence, 8191)){
+                printf("Successfully uploaded `%s`.", parameter);
+            }
             continue;
 
         }else if(equal(verb, "help")){

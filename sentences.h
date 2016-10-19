@@ -1,3 +1,16 @@
+/*
+   文件名:
+   描　述:
+
+   作　者: 李肇阳, 清华大学软件学院, lizy14@yeah.net
+   创建于: 2016-10-18
+
+   环　境: WSL, Windows 10.0.14393, gcc (Ubuntu 4.8.4-2ubuntu1~14.04.3) 4.8.4
+ */
+
+
+#pragma once
+
 char* anonymous_username = "anonymous";
 char* greeting = "220 Hi there! What's your name? \n";
 char* anonymous_accepted = "331 A mystery guest. Need password. Perhaps your email address? \n";
