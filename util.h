@@ -99,7 +99,9 @@ int socket_connect(int* connfd, char* ip_and_port){
 }
 
 
-
+//calls socket, bind, listen
+//return non-zero on Error
+//in particular, 233 for address already in use 
 int socket_bind_listen(int* listenfd, int port){
 
     struct sockaddr_in addr;
@@ -121,6 +123,10 @@ int socket_bind_listen(int* listenfd, int port){
 
     if (bind(*listenfd, (struct sockaddr*)&addr, sizeof(addr)) == -1) {
         printf("Error bind(): %s(%d)\n", strerror(errno), errno);
+        if(errno == 98){
+            //Address already in use(98)
+            return 233;
+        }
         return 1;
     }
 

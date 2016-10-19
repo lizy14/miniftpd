@@ -14,7 +14,6 @@
 #include "sentences.h"
 #include "util.h"
 
-
 int authenticate(char* username, char* password){
 	if(startsWith(username, anonymous_username))
 		return 1;
@@ -42,8 +41,11 @@ int serve_client(int sockfd){
 
 	while(1){
 		//main loop per client
+
+
 		char sentence[8192];
 		int p = recv_line(sockfd, sentence, 8191);
+
 		if (p < 0) {
 			printf("Error read(): %s(%d)\n", strerror(errno), errno);
 			close(sockfd);
@@ -96,8 +98,31 @@ int serve_client(int sockfd){
 
 		}else if(equal(verb, "PASV")){
 			flag_pasv_mode = 1;
-			int port = 23333;
-			socket_bind_listen(&pasv_mode_fd, port);
+            static int port = 23333;
+
+            int retry_counter = 0;
+            while(1) {
+                retry_counter++;
+                if(retry_counter > 2333) {
+                    printf("Unable to find available port\n");
+                    goto outer_continue;
+                }
+
+                port++;
+                if(port > 38324)
+                    port = 23333;
+
+                int r = socket_bind_listen(&pasv_mode_fd, port);
+                if(r==0) {
+                    break;
+                }else if(r==233) {
+                    continue;
+                }else{
+                    goto outer_continue;
+                }
+
+            }
+
 			char response[200];
 			sprintf(
 				response,
@@ -169,9 +194,9 @@ int serve_client(int sockfd){
 		}else{
 			send_string(sockfd, not_supported);
 		}
-
+outer_continue:
+        ;
 	}
-
 	return 0;
 }
 
