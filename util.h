@@ -25,6 +25,11 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <arpa/inet.h>
+#include <unistd.h>
+
+#ifndef printf_verbose
+#define printf_verbose printf
+#endif
 
 
 #define equal(x, y) (strcmp((x), (y))==0)
@@ -43,24 +48,30 @@ int str_replace(char* str, char find, char replace){
 
 int socket_connect(int* connfd, char* ip_and_port){
 
-    //parse "(127,0,0,1,233,233)"
+    //parse "(127,0,0,1,233,233)" or "127.0.0.1:59881"
     char target_ip[20];
     int target_port = 0;
 
     char* comma;
     comma = strrchr(ip_and_port, ',');
-    int ip_low = atoi(comma + 1);
-    *comma = 0;
-    comma = strrchr(ip_and_port, ',');
-    int ip_high = atoi(comma + 1);
-    *comma = 0;
+    if(comma != NULL){
+        int ip_low = atoi(comma + 1);
+        *comma = 0;
+        comma = strrchr(ip_and_port, ',');
+        int ip_high = atoi(comma + 1);
+        *comma = 0;
+        target_port = ip_high * 256 + ip_low;
+        str_replace(ip_and_port, ',', '.');
+        strcpy(target_ip, ip_and_port);
+    }else{
+        char* colon =strchr(ip_and_port, ':');
+        target_port = atoi(colon + 1);
+        *colon = 0;
+        strcpy(target_ip, ip_and_port);
+    }
 
-    target_port = ip_high * 256 + ip_low;
 
-    str_replace(ip_and_port, ',', '.');
-    strcpy(target_ip, ip_and_port);
-
-    printf("Connecting to %s:%d\n", target_ip, target_port);
+    printf_verbose("Connecting to %s:%d\n", target_ip, target_port);
 
 
     struct sockaddr_in server_addr;
@@ -83,6 +94,7 @@ int socket_connect(int* connfd, char* ip_and_port){
         printf("Error connect(): %s(%d)\n", strerror(errno), errno);
         return 1;
     }
+    printf_verbose("Connected\n");
 
     return 0;
 
@@ -118,10 +130,13 @@ int socket_bind_listen(int* listenfd, int port){
         printf("Error listen(): %s(%d)\n", strerror(errno), errno);
         return 1;
     }
+
+    printf_verbose("Listening on localhost:%d\n", port);
+
     return 0;
 }
 
-int rtrim(char* str){
+char* rtrim(char* str){
     int i = strlen(str) - 1;
     while(i>=0){
         if(strchr(" \r\n\t", str[i]) != NULL){
@@ -129,7 +144,7 @@ int rtrim(char* str){
         }
         i--;
     }
-    return 0;
+    return str;
 }
 
 int parse_sentence(char* sentence, char* verb, char* parameter){
@@ -174,7 +189,7 @@ int send_string(int s, char *str) {
     if(n == -1){
         printf("Error send(): %s(%d)\n", strerror(errno), errno);
     }else{
-        printf("sent %d bytes\n", total);
+        printf_verbose("sent %d bytes\n", total);
     }
     return n==-1 ? -1 : total; // return -1 on failure, 0 on success
 }
@@ -185,12 +200,12 @@ int recv_line(int s, char *buf, int len) {
     int available = len;
     int n;
     while(available > 0){
-        puts("waiting for trunk");
+        printf_verbose("waiting for trunk\n");
         n = recv(s, buf+received, available, 0);
         if(n == 0 || n == -1){
             break;
         }
-        printf("received trunk of %d bytes\n", n);
+        printf_verbose("received trunk of %d bytes\n", n);
         received += n;
         available -= n;
         if(*(buf+received-1) == '\n') {
@@ -203,8 +218,9 @@ int recv_line(int s, char *buf, int len) {
     }
     if(n == -1){
         printf("Error recv(): %s(%d)\n", strerror(errno), errno);
+        *buf = '\0';
     }else{
-        printf("received %d bytes\n", received);
+        printf_verbose("received %d bytes\n", received);
     }
     return n==-1 ? -1 : received;
 }

@@ -8,6 +8,7 @@
    环　境: WSL, Windows 10.0.14393, gcc (Ubuntu 4.8.4-2ubuntu1~14.04.3) 4.8.4
  */
 
+//#define printf_verbose(...) //suppress trace output
 #include "util.h"
 
 int authenticate(char* username, char* password){
@@ -49,13 +50,11 @@ int serve_client(int sockfd){
 			return 0;
 		}
 		sentence[p] = 0;
-		printf("heard %d bytes: \n", p);
-		puts(sentence);
-		puts("");
+		printf_verbose("heard %d bytes.\n", p);
 		char verb[8192];
 		char parameter[8192];
 		parse_sentence(sentence, verb, parameter);
-		printf("verb '%s', parameter '%s'\n", verb, parameter);
+		printf_verbose("verb '%s', parameter '%s'\n", verb, parameter);
 
 
 		if(equal(verb, "USER")){
@@ -116,6 +115,7 @@ int serve_client(int sockfd){
 		}else if(equal(verb, "RETR")){
 			if(flag_port_mode){
 				send_string(sockfd, begin_transfer);
+				sleep(1);
 				int port_mode_transfer_fd;
 				socket_connect(&port_mode_transfer_fd, port_mode_parameter);
 				send_file(port_mode_transfer_fd, parameter);
@@ -124,6 +124,7 @@ int serve_client(int sockfd){
 
 			}else if(flag_pasv_mode){
 				send_string(sockfd, begin_transfer);
+				sleep(1);
 				int pasv_mode_transfer_fd = accept(pasv_mode_fd, NULL, NULL);
 				send_file(pasv_mode_transfer_fd, parameter);
 				send_string(sockfd, transfer_finished);
@@ -170,9 +171,6 @@ int serve_client(int sockfd){
 
 int main(int argc, char **argv) {
 
-	fclose(stdout); //disable debug output
-
-
 	int listening_port = 21;
 	char working_directory[8192] = "/tmp";
 
@@ -203,7 +201,7 @@ int main(int argc, char **argv) {
 	}
 	outer_break:
 
-	printf("work in %s, listen on %d\n", working_directory, listening_port);
+	printf_verbose("work in %s, listen on %d\n", working_directory, listening_port);
 	chdir(working_directory);
 
 	//establish listening and distribute incomming connections
