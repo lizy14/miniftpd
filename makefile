@@ -1,5 +1,7 @@
 CFLAGS = -Wall
-all: server client
+TARGETS = server client
+
+all: $(TARGETS)
 
 clean:
-	rm server client -f
+	rm -f $(TARGETS)
