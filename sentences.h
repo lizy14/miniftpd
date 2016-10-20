@@ -26,3 +26,4 @@ char* need_transfer_connection = "425 You have to call PORT or PASV first. \n";
 char* begin_transfer = "150 Opening BINARY mode data connection. \n";
 char* port_accepted = "200 PORT accepted, ready to connect. \n";
 char* transfer_finished = "226 Transfer successful. \n";
+char* permission_denied = "550 Permission denined. \n";

@@ -10,7 +10,6 @@
 
 #define printf_verbose(...) //suppress trace output
 
-
 #include "sentences.h"
 #include "util.h"
 
@@ -61,6 +60,10 @@ int serve_client(int sockfd){
 		char parameter[8192];
 		parse_sentence(sentence, verb, parameter);
 		printf_verbose("verb '%s', parameter '%s'\n", verb, parameter);
+		if(strlen(parameter) && strchr("./", parameter[0])){
+			send_string(sockfd, permission_denied);
+			continue;
+		}
 
 
 		if(equal(verb, "USER")){
@@ -98,6 +101,7 @@ int serve_client(int sockfd){
 
 		}else if(equal(verb, "PASV")){
 			flag_pasv_mode = 1;
+			flag_port_mode = 0;
             static int port = 23333;
 
             int retry_counter = 0;
@@ -138,6 +142,7 @@ int serve_client(int sockfd){
 
 		}else if(equal(verb, "PORT")){
 			flag_port_mode = 1;
+			flag_pasv_mode = 0;
 			strcpy(port_mode_parameter, parameter);
 			send_string(sockfd, port_accepted);
 

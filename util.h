@@ -65,6 +65,9 @@ int socket_connect(int* connfd, char* ip_and_port){
         char* colon =strchr(ip_and_port, ':');
         target_port = atoi(colon + 1);
         *colon = 0;
+        char* left = strchr(ip_and_port, '(');
+        if(left != NULL)
+            ip_and_port = left;
         strcpy(target_ip, ip_and_port);
     }
 
@@ -101,7 +104,7 @@ int socket_connect(int* connfd, char* ip_and_port){
 
 //calls socket, bind, listen
 //return non-zero on Error
-//in particular, 233 for address already in use 
+//in particular, 233 for address already in use
 int socket_bind_listen(int* listenfd, int port){
 
     struct sockaddr_in addr;
@@ -178,6 +181,7 @@ int startsWith(char* sentence, char* word){
 }
 
 int send_string(int s, char *str) {
+    printf_verbose("sending string `%s`\n", (str));
     int len = strlen(str);
     int total = 0; // how many bytes we've sent
     int charsleft = len; // how many we have left to send
@@ -224,7 +228,7 @@ int recv_line(int s, char *buf, int len) {
         printf("Error recv(): %s(%d)\n", strerror(errno), errno);
         *buf = '\0';
     }else{
-        printf_verbose("received %d bytes\n", received);
+        printf_verbose("received %d bytes: `%s`\n", received, buf);
     }
     return n==-1 ? -1 : received;
 }
