@@ -14,10 +14,10 @@
 
 char* usage = "Usage: \n    upload FILENAME\n    download FILENAME\n    exit\n    help\n";
 char* what_did_you_say = "Unknown command. Try `help`.\n";
-char* connect_success = "Successfully logged in FTP server at %s as anonymous.\n";
+char* connect_success = "Successfully logged in FTP server at %s.\n";
 char* connect_fail = "Failed to connect to %s\n";
-char* user_command = "USER anonymous\n";
-char* pass_command = "PASS zhaoyang_s_simple_ftp_client\n";
+char* user_command = "USER anonymousi\r\n";
+char* pass_command = "PASS zhaoyang_s_simple_ftp_client\r\n";
 char* passive_mode = "Passive mode, connecting to port %d\n";
 
 
@@ -80,7 +80,7 @@ int send_checkresponse(int sockfd, char* request, char* expectation, char* buffe
         send_string(sockfd, request);
     recv_line(sockfd, buffer, buffer_size);
     if(!startsWith(buffer, expectation)){
-        printf("Unexpected response: `%s`.\n Expecting `%s` instead. Aborting\n", buffer, expectation);
+        printf_verbose("Unexpected response: `%s`.\nExpecting `%s`.\n", buffer, expectation);
         return 1;
     }
     return 0;
@@ -89,12 +89,12 @@ int send_checkresponse(int sockfd, char* request, char* expectation, char* buffe
 int pasv_file(int sockfd, char* filename, int flag_retr, char* sentence, int sentence_limit){
     char command[9000];
     int transfd;
-    if(send_checkresponse(sockfd, "PASV\n", "227", sentence, sentence_limit))
+    if(send_checkresponse(sockfd, "PASV\r\n", "227", sentence, sentence_limit))
         return 1;
     int port = get_port_from_pasv_response(sentence);
     char ip_and_port[200];
-    sprintf(ip_and_port, "127.0.0.1:%d", port);
-    sprintf(command, (flag_retr? "RETR %s\n": "STOR %s\n"), filename);
+    sprintf(ip_and_port, "166.111.80.5:%d", port);
+    sprintf(command, (flag_retr? "RETR %s\r\n": "STOR %s\r\n"), filename);
     socket_connect(&transfd, ip_and_port);
     send_checkresponse(sockfd, command, "150", sentence, sentence_limit);
     (flag_retr? recv_file: send_file)(transfd, filename);
@@ -112,11 +112,11 @@ int port_file(int sockfd, char* filename, int flag_retr, char* sentence, int sen
     int transfd;
 
     int port = 23333 + rand() % 2333;
-    sprintf(command, "PORT 127,0,0,1,%d,%d\n", port / 256, port % 256);
+    sprintf(command, "PORT 101,5,216,201,%d,%d\r\n", port / 256, port % 256);
     if(send_checkresponse(sockfd, command, "227", sentence, sentence_limit))
         return 1;
 
-    sprintf(command, (flag_retr? "RETR %s\n": "STOR %s\n"), filename);
+    sprintf(command, (flag_retr? "RETR %s\r\n": "STOR %s\r\n"), filename);
     socket_bind_listen(&transfd, port);
     send_checkresponse(sockfd, command, "150", sentence, sentence_limit);
     (flag_retr? recv_file: send_file)(transfd, filename);
@@ -140,7 +140,7 @@ int main(int argc, char **argv) {
     //get server
     char server[233];
     input("Server IP and Port, defult: 127.0.0.1:21", server, 233);
-    printf("%d\n", (int)strlen(server));
+    //printf("%d\n", (int)strlen(server));
     if(strlen(server) <= 1){
         strcpy(server, "127.0.0.1:21");
     }
@@ -167,13 +167,13 @@ int main(int argc, char **argv) {
             return 1;
     }else{
         char command[9000];
-        sprintf(command, "USER %s\n", sentence);
+        sprintf(command, "USER %s\r\n", sentence);
         if(send_checkresponse(sockfd, command, "331", sentence, 8191))
             return 1;
         char* password = getpass("Login Password >");
-        char* password_commnad = (char*)malloc((strlen(password)+233)*sizeof(char));
-        sprintf(password_commnad, "PASS %s\n", password);
-        if(send_checkresponse(sockfd, pass_command, "230", sentence, 8191))
+        char* password_command = (char*)malloc((strlen(password)+233)*sizeof(char));
+        sprintf(password_command, "PASS %s\r\n", password);
+        if(send_checkresponse(sockfd, password_command, "230", sentence, 8191))
             return 1;
     }
 
@@ -216,7 +216,7 @@ int main(int argc, char **argv) {
             printf("%s", usage);
             continue;
         }else if(equal(verb, "exit")){
-            send_checkresponse(sockfd, "QUIT\n", "221", sentence, 8191);
+            send_checkresponse(sockfd, "QUIT\r\n", "221", sentence, 8191);
             break;
         }else{
             printf("%s", what_did_you_say);
